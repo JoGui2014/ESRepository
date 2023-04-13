@@ -1,10 +1,10 @@
-/* Summary: Converts a CSV file to a JSON file.*/
-
-//import java.util.*;
 import java.io.*;
-
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
+
 
 public class testeJSON extends JFrame{
     private static final long serialVersionUID = 1L;
@@ -12,32 +12,58 @@ public class testeJSON extends JFrame{
     private static BufferedReader read;
     private static BufferedWriter write;
 
-    public testeJSON(){
+    public testeJSON() {
         FileNameExtensionFilter filter = new FileNameExtensionFilter("comma separated values", "csv");
         JFileChooser choice = new JFileChooser();
         choice.setFileFilter(filter); //limit the files displayed
 
-        int option = choice.showOpenDialog(this);
-        if (option == JFileChooser.APPROVE_OPTION) {
-            CSVFile = choice.getSelectedFile();
-        }
-        else{
-            JOptionPane.showMessageDialog(this, "Did not select file. Program will exit.", "System Dialog", JOptionPane.PLAIN_MESSAGE);
-            System.exit(1);
+        // add option to open from URL
+        String[] options = {"Local file", "URL"};
+        int urlOption = JOptionPane.showOptionDialog(this,
+                "Do you want to open a local file or provide a URL?",
+                "Open file", JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE,
+                null, options, options[0]);
+
+        if (urlOption == 1) { // URL option
+            String urlStr = JOptionPane.showInputDialog(this,
+                    "Enter the URL of the CSV file:");
+            try {
+                URL url = new URL(urlStr);
+                convert(url.openStream());
+            } catch (MalformedURLException e) {
+                JOptionPane.showMessageDialog(this, "Invalid URL. Program will exit.",
+                        "System Dialog", JOptionPane.PLAIN_MESSAGE);
+                System.exit(1);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else { // local file option
+            int option = choice.showOpenDialog(this);
+            if (option == JFileChooser.APPROVE_OPTION) {
+                File CSVFile = choice.getSelectedFile();
+                try {
+                    convert(new FileInputStream(CSVFile));
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, "Did not select file. Program will exit.",
+                        "System Dialog", JOptionPane.PLAIN_MESSAGE);
+                System.exit(1);
+            }
         }
     }
+
 
     public static void main(String args[]){
         testeJSON parse = new testeJSON();
-        parse.convert();
-
         System.exit(0);
     }
 
-    private void convert(){
-        /*Converts a .csv file to .json. Assumes first line is header with columns*/
+    private static void convert(InputStream input) {
+        /* Converts a .csv file to .json. Assumes first line is header with columns */
         try {
-            read = new BufferedReader(new FileReader(CSVFile));
+            read = new BufferedReader(new InputStreamReader(input));
 
             String outputName = CSVFile.toString().substring(0,
                     CSVFile.toString().lastIndexOf(".")) + ".json";
@@ -60,25 +86,24 @@ public class testeJSON extends JFrame{
             line = read.readLine();
 
 
-            while(true) {
+            while (true) {
                 tokens = line.split(",");
 
-                if (tokens.length == num_cols){ //if number columns equal to number entries
+                if (tokens.length == num_cols) { // if number columns equal to number entries
                     write.write("{");
 
-                    for (int k = 0; k < num_cols; ++k){ //for each column 
-                        if (tokens[k].matches("^-?[0-9]*\\.?[0-9]*$")){ //if a number
+                    for (int k = 0; k < num_cols; ++k) { // for each column
+                        if (tokens[k].matches("^-?[0-9]*\\.?[0-9]*$")) { // if a number
                             write.write("\"" + columns[k] + "\": " + tokens[k]);
-                            if (k < num_cols - 1) write.write(", ");                                                }
-                        else { //if a string
+                            if (k < num_cols - 1) write.write(", ");
+                        } else { // if a string
                             write.write("\"" + columns[k] + "\": \"" + tokens[k] + "\"");
                             if (k < num_cols - 1) write.write(", ");
                         }
                     }
 
-                    ++progress; //progress update
-                    if (progress % 10000 == 0) System.out.println(progress); //print progress           
-
+                    ++progress; // progress update
+                    if (progress % 10000 == 0) System.out.println(progress); // print progress
 
                     if((line = read.readLine()) != null){//if not last line
                         write.write("},");
@@ -91,16 +116,10 @@ public class testeJSON extends JFrame{
                     }
                 }
                 else{
-                    //line = read.readLine(); //read next line if wish to continue parsing despite error 
-                    JOptionPane.showMessageDialog(this, "ERROR: Formatting error line " + (progress + 2)
-                                    + ". Failed to parse.",
-                            "System Dialog", JOptionPane.PLAIN_MESSAGE);
+
                     System.exit(-1); //error message
                 }
             }
-
-            JOptionPane.showMessageDialog(this, "File converted successfully to "     + outputName,
-                    "System Dialog", JOptionPane.PLAIN_MESSAGE);
 
             write.close();
             read.close();
@@ -111,3 +130,8 @@ public class testeJSON extends JFrame{
         }
     }
 }
+
+
+
+
+
